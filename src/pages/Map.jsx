@@ -6,7 +6,6 @@ import { useState } from "react";
 import NavBar from "../components/NavBar.jsx";
 import BottomBar from "../components/BottomBar.jsx";
 import RadarMap from "../components/RadarMap.jsx";
-import ChillMeter from "../components/ChillMeter.jsx";
 
 import axios from 'axios';
 
@@ -173,7 +172,6 @@ export default function Map() {
                                 <p className="text-xl font-semibold my-2">
                                  Greenspace Percentage:
                                 </p>
-                                <ChillMeter greenspacePercentage={greenspacePercentage} />
                                 <p className="text-xl font-semibold my-2">
                                     Chill score: 
                                     {greenspacePercentage < 10 && " Not chill ❌"}
