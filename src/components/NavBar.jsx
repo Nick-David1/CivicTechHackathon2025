@@ -1,11 +1,13 @@
 import React from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { withAuthInfo, useRedirectFunctions } from "@propelauth/react";
 import axios from "axios";
 import config from "../../config.json";
 
-const NavBar = () => {
+const NavBar = withAuthInfo((props) => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { redirectToLoginPage, redirectToSignupPage, redirectToAccountPage } = useRedirectFunctions()
 
   const rootURL = config.serverRootURL;
 
@@ -51,6 +53,7 @@ const NavBar = () => {
                 <button
                     className="px-6 py-3 rounded-md bg-[--cambridge-blue] hover:bg-[--khaki] outline-none font-bold text-white font-Lato"
                     type="button"
+                    onClick={() => redirectToLoginPage()}
                 >
                     Login
                 </button>
@@ -67,6 +70,6 @@ const NavBar = () => {
         </div>
     </div>
   );
-};
+});
 
 export default NavBar;
