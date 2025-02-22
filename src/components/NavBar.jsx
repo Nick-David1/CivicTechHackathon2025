@@ -52,6 +52,14 @@ const NavBar = withAuthInfo((props) => {
             </div>
             <div className="flex items-center space-x-4 mr-8">
                 {props.isLoggedIn ? 
+                <button
+                    className="px-6 py-3 rounded-md bg-[--cambridge-blue] hover:bg-[--khaki] outline-none font-bold text-white font-Lato"
+                    type="button"
+                    onClick={() => logoutFunction(true)}
+                >
+                    Logout
+                </button>
+                :
                 <>
                     <button
                         className="px-6 py-3 rounded-md bg-[--cambridge-blue] hover:bg-[--khaki] outline-none font-bold text-white font-Lato"
@@ -68,14 +76,8 @@ const NavBar = withAuthInfo((props) => {
                         Signup
                     </button>
 
-                </> : 
-                <button
-                    className="px-6 py-3 rounded-md bg-[--cambridge-blue] hover:bg-[--khaki] outline-none font-bold text-white font-Lato"
-                    type="button"
-                    onClick={() => logoutFunction(true)}
-                >
-                    Logout
-                </button>
+                </> 
+
             }
             </div>
         </div>
