@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mapbox Crop & Zoom Tool</title>
+
+    <!-- Mapbox GL JS CSS -->
+    <link href="https://api.mapbox.com/mapbox-gl-js/v2.8.1/mapbox-gl.css" rel="stylesheet" />
+    <link href="https://unpkg.com/@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css" rel="stylesheet" />
+
+    <!-- Styling -->
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            font-family: Arial, sans-serif;
+        }
+
+        #map {
+            width: 100%;
+            height: 80%;
+        }
+
+        #crop-preview {
+            margin-top: 10px;
+            display: none;
+            max-width: 100%;
+            height: auto;
+        }
+
+        #url-display {
+            margin-top: 10px;
+            padding: 10px;
+            background-color: #f0f0f0;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            word-wrap: break-word;
+            display: none;
+        }
+
+        #url-display a {
+            color: #007bff;
+            text-decoration: none;
+        }
+
+        #url-display a:hover {
+            text-decoration: underline;
+        }
+
+        #clear-button {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            z-index: 1;
+            padding: 8px 12px;
+            background-color: #fff;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+
+<body>
+
+<div id="map"></div>
+<img id="crop-preview" src="" alt="Cropped Area Preview" />
+<div id="url-display"></div>
+<button id="clear-button">Clear</button>
+
+<!-- Mapbox GL JS -->
+<script src="https://api.mapbox.com/mapbox-gl-js/v2.8.1/mapbox-gl.js"></script>
+<!-- Mapbox Draw Plugin -->
+<script src="https://unpkg.com/@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.js"></script>
+
+<script>
+    // Replace with your Mapbox access token
+    mapboxgl.accessToken = 'pk.eyJ1Ijoic2VlbHlmcmFuayIsImEiOiJjbTdnZTRtZ2EwOHptMnJwbHUzcXdzYnVwIn0.3iPFa2BfoT4nkWEbgIavIw';
+
+    // Initialize Mapbox map with satellite imagery
+    const map = new mapboxgl.Map({
+        container: 'map',
+        style: 'mapbox://styles/mapbox/satellite-v9',
+        center: [-74.5, 40], // NYC area (longitude, latitude)
+        zoom: 9
+    });
+
+    // Add navigation controls (zoom buttons)
+    map.addControl(new mapboxgl.NavigationControl());
+
+    // Initialize Mapbox Draw for cropping
+    const draw = new MapboxDraw({
+        displayControlsDefault: false,
+        controls: {
+            polygon: true,
+            trash: true
+        }
+    });
+    map.addControl(draw);
+
+    // Helper function to calculate the bounding box (min/max lat/lon)
+    function getBoundingBox(coords) {
+        let minLng = coords[0][0], maxLng = coords[0][0];
+        let minLat = coords[0][1], maxLat = coords[0][1];
+
+        coords.forEach(([lng, lat]) => {
+            if (lng < minLng) minLng = lng;
+            if (lng > maxLng) maxLng = lng;
+            if (lat < minLat) minLat = lat;
+            if (lat > maxLat) maxLat = lat;
+        });
+
+        return { minLng, maxLng, minLat, maxLat };
+    }
+
+    // Helper function to calculate center point
+    function calculateCenter(minLng, maxLng, minLat, maxLat) {
+        const centerLng = (minLng + maxLng) / 2;
+        const centerLat = (minLat + maxLat) / 2;
+        return [centerLng, centerLat];
+    }
+
+    // Helper function to calculate zoom level based on bounding box
+    function calculateZoomLevel(bbox) {
+        const WORLD_DIM = { height: 256, width: 256 };
+        const ZOOM_MAX = 22;
+
+        function latRad(lat) {
+            const sin = Math.sin(lat * Math.PI / 180);
+            const radX2 = Math.log((1 + sin) / (1 - sin)) / 2;
+            return Math.max(Math.min(radX2, Math.PI), -Math.PI) / 2;
+        }
+
+        function zoom(mapPx, worldPx, fraction) {
+            return Math.floor(Math.log(mapPx / worldPx / fraction) / Math.LN2);
+        }
+
+        const latFraction = (latRad(bbox.maxLat) - latRad(bbox.minLat)) / Math.PI;
+        const lngDiff = bbox.maxLng - bbox.minLng;
+        const lngFraction = ((lngDiff < 0) ? (lngDiff + 360) : lngDiff) / 360;
+
+        const latZoom = zoom(WORLD_DIM.height, WORLD_DIM.height, latFraction);
+        const lngZoom = zoom(WORLD_DIM.width, WORLD_DIM.width, lngFraction);
+
+        return Math.min(latZoom, lngZoom, ZOOM_MAX);
+    }
+
+    // When a crop is drawn
+    map.on('draw.create', function (e) {
+        const geojson = e.features[0];
+        const coordinates = geojson.geometry.coordinates[0];
+
+        // Ensure the polygon has at least 3 coordinates
+        if (coordinates.length < 3) {
+            alert("Please draw a valid polygon with at least 3 points.");
+            draw.deleteAll();
+            return;
+        }
+
+        console.log("Coordinates of the cropped area:", coordinates);
+
+        // Calculate the bounding box to zoom in
+        const { minLng, maxLng, minLat, maxLat } = getBoundingBox(coordinates);
+        map.fitBounds([[minLng, minLat], [maxLng, maxLat]], { padding: 50 });
+
+        // Calculate center point
+        const [centerLng, centerLat] = calculateCenter(minLng, maxLng, minLat, maxLat);
+
+        // Calculate zoom level
+        const zoomLevel = Math.min(calculateZoomLevel({ minLng, maxLng, minLat, maxLat }), 22);
+
+        // Generate static image URL from Mapbox using center coordinates and zoom
+        const staticImageUrl = `https://api.mapbox.com/styles/v1/mapbox/satellite-v9/static/${centerLng},${centerLat},${zoomLevel}/800x800?access_token=${mapboxgl.accessToken}`;
+        console.log("Static Image URL:", staticImageUrl);
+
+        // Display the cropped image preview
+        const previewImg = document.getElementById('crop-preview');
+        previewImg.src = staticImageUrl;
+        previewImg.style.display = 'block';
+
+        // Display the URL on the screen as a clickable link
+        const urlDisplay = document.getElementById('url-display');
+        urlDisplay.innerHTML = `<a href="${staticImageUrl}" target="_blank">${staticImageUrl}</a>`;
+        urlDisplay.style.display = 'block';
+    });
+
+    // Clear the drawn polygon and reset the preview image
+    document.getElementById('clear-button').addEventListener('click', function () {
+        draw.deleteAll();
+        const previewImg = document.getElementById('crop-preview');
+        previewImg.src = '';
+        previewImg.style.display = 'none';
+
+        const urlDisplay = document.getElementById('url-display');
+        urlDisplay.textContent = '';
+        urlDisplay.style.display = 'none';
+    });
+</script>
+
+</body>
+
+</html>
