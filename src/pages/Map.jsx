@@ -32,6 +32,8 @@ export default function Map() {
     const mapContainer = useRef(null);
     const mapRef = useRef(null);
     const geocoderContainerRef = useRef(null);
+    const [analysisResults, setAnalysisResults] = useState(null);
+    const [isLoading, setIsLoading] = useState(false);
 
     useEffect(() => {
         const map = new mapboxgl.Map({
@@ -88,6 +90,34 @@ export default function Map() {
         }
     };
 
+    // New function to analyze the image
+    const handleAnalyze = async () => {
+        if (!coordinates.lat || !coordinates.lng) return;
+        setIsLoading(true);
+        try {
+            // Generate the satellite image URL using Mapbox Static API with a high zoom level for a close‐up view
+            const zoomLevel = 18; // Adjust this level for focusing on a couple of blocks
+            const width = 600;    // Width of the static image in pixels
+            const height = 400;   // Height of the static image in pixels
+            const satelliteUrl = `https://api.mapbox.com/styles/v1/mapbox/satellite-v9/static/${coordinates.lng},${coordinates.lat},${zoomLevel}/${width}x${height}?access_token=${mapboxgl.accessToken}`;
+
+            // Send a POST request to the backend.
+            // The backend should fetch and save the satellite image in MongoDB, 
+            // then process the image via GPT Vision API and the tree detection model,
+            // returning analysis results including the processed satellite image URL.
+            const response = await axios.post(`${rootURL}/analyzeImage`, {
+                lat: coordinates.lat,
+                long: coordinates.lng,
+                satelliteUrl: satelliteUrl
+            });
+
+            setAnalysisResults(response.data);
+        } catch (error) {
+            console.error("Error during analysis:", error);
+        }
+        setIsLoading(false);
+    };
+
     return (
         <div className="flex flex-col">
             <NavBar></NavBar>
@@ -102,6 +132,17 @@ export default function Map() {
                         <div className="mb-4">
                             <div ref={geocoderContainerRef} id="geocoder" className="w-full p-2" />
                         </div>
+                        {address && (
+                            <div className="mt-4">
+                                {/* New Analyze Button */}
+                                <button 
+                                    onClick={handleAnalyze}
+                                    className="px-4 py-2 bg-blue-600 text-white rounded"
+                                >
+                                    {isLoading ? "Analyzing..." : "Analyze"}
+                                </button>
+                            </div>
+                        )}
                     </div>
                     <div className="max-w-3xl mx-auto px-4">
                         {imageURL && (
@@ -144,6 +185,21 @@ export default function Map() {
                             </p>
                         </div>
                     </div>
+                    {analysisResults && (
+                        <div className="max-w-3xl mx-auto px-4">
+                            {analysisResults.imageUrl && (
+                                <div className="mt-4">
+                                    <h3 className="text-xl font-semibold mb-2">Satellite Image</h3>
+                                    <img src={analysisResults.imageUrl} alt="Satellite" className="w-full h-auto rounded-md" />
+                                </div>
+                            )}
+                            {analysisResults.greenspace_percentage !== undefined && (
+                                <div className="mt-4">
+                                    <h3 className="text-xl font-semibold">Greenspace Percentage: {analysisResults.greenspace_percentage}%</h3>
+                                </div>
+                            )}
+                        </div>
+                    )}
                 </div>
             </div>
             <BottomBar />

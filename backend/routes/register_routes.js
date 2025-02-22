@@ -7,7 +7,7 @@ module.exports = {
 };
 
 function register_routes(app) {
-	app.put('/addPost', routes.add_post);
-	app.post('/getPosts', routes.get_posts);
+-	app.put('/addPost', routes.add_post);
+-	app.post('/getPosts', routes.get_posts);
 	app.get('/getImage', routes.get_image);
 }
