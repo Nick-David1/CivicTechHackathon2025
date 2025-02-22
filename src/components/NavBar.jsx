@@ -1,12 +1,13 @@
 import React from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { withAuthInfo, useRedirectFunctions } from "@propelauth/react";
+import { withAuthInfo, useRedirectFunctions, useLogoutFunction } from "@propelauth/react";
 import axios from "axios";
 import config from "../../config.json";
 
 const NavBar = withAuthInfo((props) => {
   const navigate = useNavigate();
   const location = useLocation();
+  const logoutFunction = useLogoutFunction();
   const { redirectToLoginPage, redirectToSignupPage, redirectToAccountPage } = useRedirectFunctions()
 
   const rootURL = config.serverRootURL;
@@ -50,19 +51,32 @@ const NavBar = withAuthInfo((props) => {
                 </div>
             </div>
             <div className="flex items-center space-x-4 mr-8">
+                {props.isLoggedIn ? 
+                <>
+                    <button
+                        className="px-6 py-3 rounded-md bg-[--cambridge-blue] hover:bg-[--khaki] outline-none font-bold text-white font-Lato"
+                        type="button"
+                        onClick={() => redirectToLoginPage()}
+                    >
+                        Login
+                    </button>
+                    <button
+                        className="px-6 py-3 rounded-md bg-[--cambridge-blue] hover:bg-[--khaki] outline-none font-bold text-white font-Lato"
+                        type="button"
+                        onClick={() => redirectToSignupPage()}
+                    >
+                        Signup
+                    </button>
+
+                </> : 
                 <button
                     className="px-6 py-3 rounded-md bg-[--cambridge-blue] hover:bg-[--khaki] outline-none font-bold text-white font-Lato"
                     type="button"
-                    onClick={() => redirectToLoginPage()}
+                    onClick={() => logoutFunction(true)}
                 >
-                    Login
+                    Logout
                 </button>
-                <button
-                    className="px-6 py-3 rounded-md bg-[--cambridge-blue] hover:bg-[--khaki] outline-none font-bold text-white font-Lato"
-                    type="button"
-                >
-                    Signup
-                </button>
+            }
             </div>
         </div>
         <div className="pt-24">
