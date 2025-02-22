@@ -169,16 +169,7 @@ export default function Map() {
                         </div>
                         {greenspacePercentage !== null && (
                             <div className="mt-4">
-                                <p className="text-xl font-semibold my-2">
-                                 Greenspace Percentage:
-                                </p>
-                                <p className="text-xl font-semibold my-2">
-                                    Chill score: 
-                                    {greenspacePercentage < 10 && " Not chill ❌"}
-                                    {greenspacePercentage >= 10 && greenspacePercentage < 20 && " Pretty chill I guess 🤙"}
-                                    {greenspacePercentage >= 20 && greenspacePercentage < 30 && " Almost super chill 🧊"}
-                                    {greenspacePercentage >= 30 && " Good chill 🥶"}
-                                </p>
+                             
                             </div>
                         )}
                         <div className="max-w-3xl mx-auto py-4 mt-2">
