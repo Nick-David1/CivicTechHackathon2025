@@ -2,7 +2,7 @@
   "database": {
     "host": "localhost",
     "port": "3306",
-    "database": "chilladelphia"
+    "database": "GreenGuage"
   },
   "serverPort": "8080",
   "mongoUri": "mongodb+srv://nicholasedavid:<db_password>@cluster0.vkwzh.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0",

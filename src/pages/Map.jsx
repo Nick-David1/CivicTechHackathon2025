@@ -95,23 +95,33 @@ export default function Map() {
         if (!coordinates.lat || !coordinates.lng) return;
         setIsLoading(true);
         try {
-            // Generate the satellite image URL using Mapbox Static API with a high zoom level for a close‐up view
-            const zoomLevel = 18; // Adjust this level for focusing on a couple of blocks
-            const width = 600;    // Width of the static image in pixels
-            const height = 400;   // Height of the static image in pixels
+            // Generate the satellite image URL
+            const zoomLevel = 18;
+            const width = 600;
+            const height = 400;
             const satelliteUrl = `https://api.mapbox.com/styles/v1/mapbox/satellite-v9/static/${coordinates.lng},${coordinates.lat},${zoomLevel}/${width}x${height}?access_token=${mapboxgl.accessToken}`;
 
-            // Send a POST request to the backend.
-            // The backend should fetch and save the satellite image in MongoDB, 
-            // then process the image via GPT Vision API and the tree detection model,
-            // returning analysis results including the processed satellite image URL.
-            const response = await axios.post(`${rootURL}/analyzeImage`, {
+            // Fetch and convert to base64
+            const response = await axios.get(satelliteUrl, { responseType: 'arraybuffer' });
+            const base64Image = btoa(
+                new Uint8Array(response.data).reduce(
+                    (data, byte) => data + String.fromCharCode(byte),
+                    ''
+                )
+            );
+
+            // Display the image
+            setOriginalImage(base64Image);
+            setImageURL(satelliteUrl);
+
+            // Send to GPT Vision API
+            const gptResponse = await axios.post(`${rootURL}/analyzeImage/analyze`, {
                 lat: coordinates.lat,
                 long: coordinates.lng,
-                satelliteUrl: satelliteUrl
+                imageBase64: base64Image
             });
 
-            setAnalysisResults(response.data);
+            setAnalysisResults(gptResponse.data);
         } catch (error) {
             console.error("Error during analysis:", error);
         }
@@ -147,8 +157,27 @@ export default function Map() {
                     <div className="max-w-3xl mx-auto px-4">
                         {imageURL && (
                             <div className="mt-4">
-                                <h3 className="text-xl font-semibold mb-2">Original Image</h3>
-                                <img src={imageURL} alt="Original Map" className="w-full h-auto rounded-md" />
+                                <h3 className="text-xl font-semibold mb-2">Satellite Image</h3>
+                                <img src={imageURL} alt="Satellite View" className="w-full h-auto rounded-md" />
+                                
+                                {analysisResults && (
+                                    <div className="mt-4">
+                                        <h3 className="text-xl font-semibold mb-2">Analysis Results</h3>
+                                        <div className="bg-white p-4 rounded-md shadow">
+                                            <p>{analysisResults.analysis}</p>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                        {originalImage && (
+                            <div className="mt-4">
+                                <h3 className="text-xl font-semibold mb-2">Base64 Image</h3>
+                                <img 
+                                    src={`data:image/png;base64,${originalImage}`} 
+                                    alt="Base64 Image" 
+                                    className="w-full h-auto rounded-md" 
+                                />
                             </div>
                         )}
                         <div className="flex flex-row space-x-4 mt-2 "> 
@@ -198,6 +227,10 @@ export default function Map() {
                                     <h3 className="text-xl font-semibold">Greenspace Percentage: {analysisResults.greenspace_percentage}%</h3>
                                 </div>
                             )}
+                            <div className="mt-4">
+                                <h3 className="text-xl font-semibold mb-2">Analysis Results</h3>
+                                <p>{analysisResults.analysis}</p>
+                            </div>
                         </div>
                     )}
                 </div>
