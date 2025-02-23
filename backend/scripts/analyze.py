@@ -4,53 +4,44 @@ import base64
 import cv2
 import numpy as np
 from deepforest import main
-import requests
-import tempfile
 import os
+import requests
+import logging
+
+# Suppress DeepForest logging
+logging.getLogger('deepforest').setLevel(logging.ERROR)
 
 # Initialize model
 model = main.deepforest()
 model.use_release()
 
-def validate_image(image_path):
-    try:
-        img = cv2.imread(image_path)
-        if img is None:
-            return False, "Failed to read image"
-        if len(img.shape) != 3 or img.shape[2] != 3:
-            return False, "Image must be in RGB format"
-        if img.shape[0] < 100 or img.shape[1] < 100:
-            return False, "Image dimensions too small"
-        return True, "Image valid"
-    except Exception as e:
-        return False, str(e)
-
 def analyze_image(image_base64, lat, lon):
+    temp_path = "temp_image.jpg"
     try:
-        print("Starting image analysis...")
+        print("Starting image analysis...", file=sys.stderr)
         # Add padding if necessary
         padding = len(image_base64) % 4
         if padding:
             image_base64 += '=' * (4 - padding)
         
-        print("Decoding image...")
+        print("Decoding image...", file=sys.stderr)
         image_data = base64.b64decode(image_base64)
         image_array = np.frombuffer(image_data, dtype=np.uint8)
         image = cv2.imdecode(image_array, cv2.IMREAD_COLOR)
         
         if image is None:
-            print("Failed to decode image")
+            print("Failed to decode image", file=sys.stderr)
             return {"error": "Failed to decode image"}
         
-        print(f"Image dimensions: {image.shape}")
+        print(f"Image dimensions: {image.shape}", file=sys.stderr)
         
-        print("Saving temporary image...")
-        temp_path = "temp_image.jpg"
+        print("Saving temporary image...", file=sys.stderr)
         cv2.imwrite(temp_path, image)
         
-        print("Analyzing image with DeepForest...")
+        print("Analyzing image with DeepForest...", file=sys.stderr)
         boxes = model.predict_image(path=temp_path)
-        print(f"Found {len(boxes)} trees")
+        num_trees = len(boxes)
+        print(f"Found {num_trees} trees", file=sys.stderr)
         
         # Calculate tree coverage
         height, width, _ = image.shape
@@ -58,19 +49,20 @@ def analyze_image(image_base64, lat, lon):
         tree_area = sum((row["xmax"] - row["xmin"]) * (row["ymax"] - row["ymin"]) for _, row in boxes.iterrows())
         tree_cover = (tree_area / total_area) * 100
         
-        # Get air quality
+        print("Getting air quality...", file=sys.stderr)
         api_key = '012f8393-a199-4264-be78-89fbb395da6d'
         air_quality = get_air_quality(lat, lon, api_key)
         
-        return {
+        result = {
             "tree_cover_percent": tree_cover,
-            "num_trees": len(boxes),
+            "num_trees": num_trees,
             "air_quality": air_quality
         }
+        return result
     except Exception as e:
+        print(f"Error in analyze_image: {str(e)}", file=sys.stderr)
         return {"error": str(e)}
     finally:
-        # Clean up temporary file
         if os.path.exists(temp_path):
             os.remove(temp_path)
 
@@ -82,16 +74,12 @@ def get_air_quality(lat, lon, api_key):
         return data['data'] if data['status'] == 'success' else None
     return None
 
-if __name__ == "__main__":
-    try:
-        image_base64 = sys.argv[1]
-        lat = float(sys.argv[2])
-        lon = float(sys.argv[3])
-        
-        result = analyze_image(image_base64, lat, lon)
-        print(json.dumps(result, ensure_ascii=False))
-        sys.stdout.flush()
-    except Exception as e:
-        print(json.dumps({"error": str(e)}, ensure_ascii=False))
-        sys.stdout.flush()
+if __name__ == '__main__':
+    if len(sys.argv) < 4:
+        print(json.dumps({"error": "Missing parameters"}), file=sys.stderr)
         sys.exit(1)
+    image_base64 = sys.argv[1]
+    lat = sys.argv[2]
+    lon = sys.argv[3]
+    result = analyze_image(image_base64, lat, lon)
+    print(json.dumps(result))

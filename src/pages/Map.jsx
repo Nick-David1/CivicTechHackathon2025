@@ -111,12 +111,14 @@ export default function Map() {
                 lng: coordinates.lng
             });
 
-            setAnalysisResults(analysisResponse.data);
+            // Remove the JSON parsing logic since Axios already parses the response
+            const analysisResult = analysisResponse.data;
+
+            setAnalysisResults(analysisResult);
             setImageURL(satelliteUrl);
             setOriginalImage(base64Image);
         } catch (error) {
             console.error("Error during analysis:", error);
-            // Add user-friendly error message
             alert("Analysis failed. Please try again.");
         } finally {
             setIsLoading(false);

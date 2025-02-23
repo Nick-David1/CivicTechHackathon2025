@@ -24,13 +24,17 @@ const handleAnalyze = async () => {
     setOriginalImage(base64Image);
     setImageURL(satelliteUrl);
 
-    const gptResponse = await axios.post(`${rootURL}/analyze`, {
-      imageBase64: base64Image
+    const analysisResponse = await axios.post(`${rootURL}/analyze`, {
+      imageBase64: base64Image,
+      lat: coordinates.lat,
+      lng: coordinates.lng
     });
 
-    setAnalysisResults(gptResponse.data);
+    setAnalysisResults(analysisResponse.data);
   } catch (error) {
     console.error("Error during analysis:", error);
+    console.error("Error details:", error.response?.data);
+    alert("Analysis failed. Please try again.");
   } finally {
     setIsLoading(false);
   }

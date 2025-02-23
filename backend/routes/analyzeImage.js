@@ -39,24 +39,46 @@ router.post('/analyze', async (req, res) => {
     });
 
     pythonProcess.on('close', async (code) => {
+      console.log('Python process closed with code:', code);
       if (code !== 0) {
         console.error('Python process exited with code:', code);
         console.error('Python error output:', error);
-        return res.status(500).json({ 
+        return res.status(500).json({
           error: 'Image analysis failed',
-          pythonError: error 
+          pythonError: error
         });
       }
 
       try {
-        // Add validation for empty data
+        // Log the raw data from Python process
+        console.log('Raw Python output:', data);
         if (!data) {
           throw new Error('No data received from Python script');
         }
-        
-        const analysisResult = JSON.parse(data);
+
+        // Find the first occurrence of '{'
+        const jsonStart = data.indexOf('{');
+        if (jsonStart === -1) {
+          throw new Error('No JSON data found in python output');
+        }
+        const jsonString = data.slice(jsonStart);
+
+        const analysisResult = JSON.parse(jsonString);
+        // Check if the result contains an error key
+        if (analysisResult.error) {
+          console.error('Python script error:', analysisResult.error);
+          return res.status(500).json({ error: analysisResult.error });
+        }
+
+        // Build the message content as a string
+        const userMessage = `Tree Coverage: ${analysisResult.tree_cover_percent}%, Number of Trees: ${analysisResult.num_trees}\n` +
+                            `Please analyze the attached satellite image: data:image/jpeg;base64,${imageBase64}`;
+
+        // Log the message that will be sent to OpenAI
+        console.log('Message sent to OpenAI:', userMessage);
+
         const gptResponse = await openai.chat.completions.create({
-          model: "gpt-4o",
+          model: "gpt-4-turbo",
           messages: [
             {
               role: "system",
@@ -64,10 +86,10 @@ router.post('/analyze', async (req, res) => {
             },
             {
               role: "user",
-              content: `data:image/jpeg;base64,${imageBase64}`
+              content: userMessage
             }
           ],
-          max_tokens: 10000
+          max_tokens: 85
         });
 
         res.json({
@@ -75,7 +97,7 @@ router.post('/analyze', async (req, res) => {
           analysis: gptResponse.choices[0].message.content
         });
       } catch (parseError) {
-        console.error('Error parsing Python output:', parseError);
+        console.error('Error processing analysis results:', parseError);
         console.error('Raw Python output:', data);
         res.status(500).json({ error: 'Error processing analysis results' });
       }
