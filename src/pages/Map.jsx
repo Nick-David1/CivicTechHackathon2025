@@ -5,7 +5,6 @@ import { useNavigate } from "react-router-dom";
 import { useState, useRef, useEffect } from "react";
 import NavBar from "../components/NavBar.jsx";
 import BottomBar from "../components/BottomBar.jsx";
-import RadarMap from "../components/RadarMap.jsx";
 
 import axios from 'axios';
 
@@ -22,8 +21,6 @@ export default function Map() {
     const navigate = useNavigate();
     const rootURL = config.serverRootURL;
     const [greenspacePercentage, setGreenspacePercentage] = useState(null);
-    const [analyzedImage, setAnalyzedImage] = useState(null);
-    const [originalImage, setOriginalImage] = useState(null);
     const [address, setAddress] = useState("");
     const [location, setLocation] = useState(null);
     const [suggestions, setSuggestions] = useState([]);
@@ -79,11 +76,6 @@ export default function Map() {
         const height = 400;
         const satelliteUrl = `https://api.mapbox.com/styles/v1/mapbox/satellite-v9/static/${newCoordinates.lng},${newCoordinates.lat},${zoomLevel}/${width}x${height}?access_token=${mapboxgl.accessToken}`;
         setImageURL(satelliteUrl);
-
-        // Optionally reset any analysis fields if needed
-        setGreenspacePercentage(null);
-        setAnalyzedImage(null);
-        setOriginalImage(null);
     };
 
     // Function to analyze the image
@@ -116,7 +108,6 @@ export default function Map() {
 
             setAnalysisResults(analysisResult);
             setImageURL(satelliteUrl);
-            setOriginalImage(base64Image);
         } catch (error) {
             console.error("Error during analysis:", error);
             alert("Analysis failed. Please try again.");
@@ -126,10 +117,10 @@ export default function Map() {
     };
 
     return (
-        <div className="flex flex-col">
-            <NavBar></NavBar>
-            <div className="w-screen h-full bg-[--light-taupe-grey] overflow flex justify-center">
-                <div className="rounded-md bg-[--champagne] p-20 space-y-2 w-auto h-full font-Lato my-4">
+        <div className="flex flex-col min-h-screen">
+        <NavBar></NavBar>
+        <div className="w-screen flex-grow bg-[--light-taupe-grey] flex justify-center">
+            <div className="rounded-md bg-[--champagne] p-8 space-y-2 w-full max-w-7xl font-Lato">
                     {/* Map Container */}
                     <div className="w-full h-96 bg-gray-200 flex items-center justify-center p-1 border border-gray-400">
                         <div ref={mapContainer} className="w-full h-full" />
@@ -141,98 +132,97 @@ export default function Map() {
                         </div>
                         {address && (
                             <div className="mt-4">
-                                {/* New Analyze Button */}
                                 <button 
                                     onClick={handleAnalyze}
-                                    className="px-4 py-2 bg-blue-600 text-white rounded"
+                                    className="px-4 py-2 bg-green-600 text-white rounded flex items-center justify-center gap-2 hover:bg-green-700 transition-colors"
+                                    disabled={isLoading}
                                 >
-                                    {isLoading ? "Analyzing..." : "Analyze"}
+                                    {isLoading ? (
+                                        <>
+                                            <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                            </svg>
+                                            Analyzing...
+                                        </>
+                                    ) : (
+                                        "Analyze"
+                                    )}
                                 </button>
                             </div>
                         )}
                     </div>
-                    <div className="max-w-3xl mx-auto px-4">
-                        {imageURL && (
+                    {analysisResults && (
+                        <div className="max-w-3xl mx-auto px-4">
                             <div className="mt-4">
                                 <h3 className="text-xl font-semibold mb-2">Satellite Image</h3>
                                 <img src={imageURL} alt="Satellite View" className="w-full h-auto rounded-md" />
-                                
-                                {analysisResults && (
-                                    <div className="mt-4">
-                                        <h3 className="text-xl font-semibold mb-2">Analysis Results</h3>
-                                        <div className="bg-white p-4 rounded-md shadow">
-                                            <p><strong>Tree Coverage:</strong> {analysisResults.tree_cover_percent?.toFixed(2)}%</p>
-                                            <p><strong>Number of Trees:</strong> {analysisResults.num_trees}</p>
-                                            <p><strong>Air Quality:</strong> {JSON.stringify(analysisResults.air_quality)}</p>
-                                            <p><strong>GPT Analysis:</strong> {analysisResults.analysis}</p>
+                                <div className="mt-4">
+                                    <h3 className="text-xl font-semibold mb-2">Analysis Results</h3>
+                                    <div className="bg-white p-4 rounded-md shadow space-y-4">
+                                        {/* Tree Coverage Progress Bar */}
+                                        <div>
+                                            <p className="font-medium mb-2">Tree Coverage: {analysisResults.tree_cover_percent?.toFixed(2)}%</p>
+                                            <div className="w-full bg-gray-200 rounded-full h-2.5">
+                                                <div 
+                                                    className="bg-green-600 h-2.5 rounded-full" 
+                                                    style={{ width: `${analysisResults.tree_cover_percent}%` }}
+                                                ></div>
+                                            </div>
                                         </div>
+
+                                        {/* Number of Trees */}
+                                        <div>
+                                            <p className="font-medium">Number of Trees: {analysisResults.num_trees}</p>
+                                        </div>
+
+                                        {/* Air Quality Details */}
+                                        {analysisResults.air_quality && (
+                                            <div className="space-y-2">
+                                                <h4 className="text-lg font-semibold">Air Quality</h4>
+                                                <div className="grid grid-cols-2 gap-2">
+                                                    <div>
+                                                        <p className="text-sm">AQI (US):</p>
+                                                        <p className="font-medium">{analysisResults.air_quality.current.pollution.aqius}</p>
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-sm">Main Pollutant:</p>
+                                                        <p className="font-medium">{analysisResults.air_quality.current.pollution.mainus}</p>
+                                                    </div>
+                                                </div>
+                                                <h4 className="text-lg font-semibold mt-4">Weather</h4>
+                                                <div className="grid grid-cols-2 gap-2">
+                                                    <div>
+                                                        <p className="text-sm">Temperature:</p>
+                                                        <p className="font-medium">{analysisResults.air_quality.current.weather.tp}°C</p>
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-sm">Humidity:</p>
+                                                        <p className="font-medium">{analysisResults.air_quality.current.weather.hu}%</p>
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-sm">Wind Speed:</p>
+                                                        <p className="font-medium">{analysisResults.air_quality.current.weather.ws} m/s</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
-                                )}
-                            </div>
-                        )}
-                        {originalImage && (
-                            <div className="mt-4">
-                                <h3 className="text-xl font-semibold mb-2">Base64 Image</h3>
-                                <img 
-                                    src={`data:image/png;base64,${originalImage}`} 
-                                    alt="Base64 Image" 
-                                    className="w-full h-auto rounded-md" 
-                                />
-                            </div>
-                        )}
-                        <div className="flex flex-row space-x-4 mt-2 "> 
-                            {originalImage && (
-                                <div>
-                                    <h3 className="text-xl font-semibold mb-2">Original Image</h3>
-                                    <img 
-                                        src={`data:image/png;base64,${originalImage}`} 
-                                        alt="Analyzed Map" 
-                                        className="w-full h-auto rounded-md" 
-                                    />
+                                    
+                                    {/* Add GPT Analysis Section */}
+                                    {analysisResults.analysis && (
+                                        <div className="mt-6">
+                                            <h3 className="text-xl font-semibold mb-2">AI Environmental Recommendations</h3>
+                                            <div className="bg-white p-4 rounded-md shadow">
+                                                <p className="whitespace-pre-wrap text-gray-700">{analysisResults.analysis}</p>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
-                            )}
-                            {analyzedImage && (
-                                <div>
-                                    <h3 className="text-xl font-semibold mb-2">Analyzed Image</h3>
-                                    <img 
-                                        src={`data:image/png;base64,${analyzedImage}`} 
-                                        alt="Analyzed Map" 
-                                        className="w-full h-auto rounded-md" 
-                                    />
-                                </div>
-                            )}
-                        </div>
-                        {greenspacePercentage !== null && (
-                            <div className="mt-4">
-                             
-                            </div>
-                        )}
-                        <div className="max-w-3xl mx-auto py-4 mt-2">
-                            <h2 className="text-2xl font-bold mb-4">Tree Coverage</h2>
-                            <p className="mb-2">
-                                It is recommended to have at least 30% tree coverage in every neighborhood to help mitigate the effects of urban heat islands. Trees provide shade, reduce temperatures, and improve air quality.
-                            </p>
-                        </div>
-                    </div>
-                    {analysisResults && (
-                        <div className="max-w-3xl mx-auto px-4">
-                            {analysisResults.imageUrl && (
-                                <div className="mt-4">
-                                    <h3 className="text-xl font-semibold mb-2">Satellite Image</h3>
-                                    <img src={analysisResults.imageUrl} alt="Satellite" className="w-full h-auto rounded-md" />
-                                </div>
-                            )}
-                            {analysisResults.tree_cover_percent !== undefined && (
-                                <div className="mt-4">
-                                    <h3 className="text-xl font-semibold">Tree Coverage: {analysisResults.tree_cover_percent?.toFixed(2)}%</h3>
-                                </div>
-                            )}
-                            <div className="mt-4">
-                                <h3 className="text-xl font-semibold mb-2">Analysis Results</h3>
-                                <p>{analysisResults.analysis}</p>
                             </div>
                         </div>
                     )}
+                   
                 </div>
             </div>
             <BottomBar />

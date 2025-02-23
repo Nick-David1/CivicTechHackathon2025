@@ -71,8 +71,16 @@ router.post('/analyze', async (req, res) => {
         }
 
         // Build the message content as a string
-        const userMessage = `Tree Coverage: ${analysisResult.tree_cover_percent}%, Number of Trees: ${analysisResult.num_trees}\n` +
-                            `Please analyze the attached satellite image: data:image/jpeg;base64,${imageBase64}`;
+        const userMessage = `Location: ${analysisResult.air_quality.city}
+Tree Coverage: ${analysisResult.tree_cover_percent.toFixed(2)}%
+Trees: ${analysisResult.num_trees}
+AQI: ${analysisResult.air_quality.current.pollution.aqius}
+Main Pollutant: ${analysisResult.air_quality.current.pollution.mainus}
+Temp: ${analysisResult.air_quality.current.weather.tp}°C
+Humidity: ${analysisResult.air_quality.current.weather.hu}%
+Wind: ${analysisResult.air_quality.current.weather.ws} m/s
+
+Based on the actual tree coverage percentage (${analysisResult.tree_cover_percent.toFixed(2)}%) and tree count (${analysisResult.num_trees}), provide 3 quick, one-sentence bullet point recommendations to improve environmental quality. Focus on actionable, specific suggestions.`;
 
         // Log the message that will be sent to OpenAI
         console.log('Message sent to OpenAI:', userMessage);
@@ -82,14 +90,14 @@ router.post('/analyze', async (req, res) => {
           messages: [
             {
               role: "system",
-              content: "Analyze this satellite image and provide insights about the green space and tree coverage."
+              content: "You are an environmental expert. Provide exactly 3 concise, one-sentence bullet point recommendations based on tree coverage and count. Start with 'Based on the actual tree coverage percentage and tree count:' and use this format: • [recommendation]"
             },
             {
               role: "user",
               content: userMessage
             }
           ],
-          max_tokens: 85
+          max_tokens: 10000
         });
 
         res.json({

@@ -38,12 +38,12 @@ const NavBar = withAuthInfo((props) => {
             <div className="flex items-center">
                 <div onClick={home} className="px-4 cursor-pointer flex items-center">
                     <div className="font-bold text-[24pt] mx-1 h-full text-[--cambridge-blue] font-[snowfont]">
-                        Green Guage
+                        Green Gauge
                     </div>
                 </div>
                 <div className="font-Lato space-x-8 flex ml-8 font-bold text-lg">
                     <div onClick={map} className="px-4 cursor-pointer">
-                        Heat Map
+                        Map
                     </div>
                     <div onClick={about} className="px-4 cursor-pointer">
                         About Us
