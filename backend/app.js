@@ -15,7 +15,7 @@ app.use(cors({
 app.use(express.json());
 
 const analyzeImageRouter = require('./routes/analyzeImage');
-app.use('/analyzeImage', analyzeImageRouter);
+app.use('/', analyzeImageRouter);
 
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);

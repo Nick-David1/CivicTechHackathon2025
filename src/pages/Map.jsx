@@ -71,37 +71,32 @@ export default function Map() {
         };
     }, []);
 
-    const handleLocationSelect = async (center) => {
+    const handleLocationSelect = (center) => {
         const newCoordinates = { lat: center[1], lng: center[0] };
         setCoordinates(newCoordinates);
-        try {
-            const response = await axios.get(`${rootURL}/getImage`, {
-                params: {
-                    lat: newCoordinates.lat,
-                    long: newCoordinates.lng
-                }
-            });
-            setImageURL(response.data.imageUrl);
-            setGreenspacePercentage(response.data.greenspace_percentage);
-            setAnalyzedImage(response.data.analyzed_image);
-            setOriginalImage(response.data.original_image);
-        } catch (error) {
-            console.error("Error fetching image data:", error);
-        }
+        const zoomLevel = 18;
+        const width = 600;
+        const height = 400;
+        const satelliteUrl = `https://api.mapbox.com/styles/v1/mapbox/satellite-v9/static/${newCoordinates.lng},${newCoordinates.lat},${zoomLevel}/${width}x${height}?access_token=${mapboxgl.accessToken}`;
+        setImageURL(satelliteUrl);
+
+        // Optionally reset any analysis fields if needed
+        setGreenspacePercentage(null);
+        setAnalyzedImage(null);
+        setOriginalImage(null);
     };
 
-    // New function to analyze the image
+    // Function to analyze the image
     const handleAnalyze = async () => {
         if (!coordinates.lat || !coordinates.lng) return;
         setIsLoading(true);
+
         try {
-            // Generate the satellite image URL
             const zoomLevel = 18;
             const width = 600;
             const height = 400;
             const satelliteUrl = `https://api.mapbox.com/styles/v1/mapbox/satellite-v9/static/${coordinates.lng},${coordinates.lat},${zoomLevel}/${width}x${height}?access_token=${mapboxgl.accessToken}`;
 
-            // Fetch and convert to base64
             const response = await axios.get(satelliteUrl, { responseType: 'arraybuffer' });
             const base64Image = btoa(
                 new Uint8Array(response.data).reduce(
@@ -110,22 +105,22 @@ export default function Map() {
                 )
             );
 
-            // Display the image
-            setOriginalImage(base64Image);
-            setImageURL(satelliteUrl);
-
-            // Send to GPT Vision API
-            const gptResponse = await axios.post(`${rootURL}/analyzeImage/analyze`, {
+            const analysisResponse = await axios.post(`${rootURL}/analyze`, {
+                imageBase64: base64Image,
                 lat: coordinates.lat,
-                long: coordinates.lng,
-                imageBase64: base64Image
+                lng: coordinates.lng
             });
 
-            setAnalysisResults(gptResponse.data);
+            setAnalysisResults(analysisResponse.data);
+            setImageURL(satelliteUrl);
+            setOriginalImage(base64Image);
         } catch (error) {
             console.error("Error during analysis:", error);
+            // Add user-friendly error message
+            alert("Analysis failed. Please try again.");
+        } finally {
+            setIsLoading(false);
         }
-        setIsLoading(false);
     };
 
     return (
@@ -164,7 +159,10 @@ export default function Map() {
                                     <div className="mt-4">
                                         <h3 className="text-xl font-semibold mb-2">Analysis Results</h3>
                                         <div className="bg-white p-4 rounded-md shadow">
-                                            <p>{analysisResults.analysis}</p>
+                                            <p><strong>Tree Coverage:</strong> {analysisResults.tree_cover_percent?.toFixed(2)}%</p>
+                                            <p><strong>Number of Trees:</strong> {analysisResults.num_trees}</p>
+                                            <p><strong>Air Quality:</strong> {JSON.stringify(analysisResults.air_quality)}</p>
+                                            <p><strong>GPT Analysis:</strong> {analysisResults.analysis}</p>
                                         </div>
                                     </div>
                                 )}
@@ -222,9 +220,9 @@ export default function Map() {
                                     <img src={analysisResults.imageUrl} alt="Satellite" className="w-full h-auto rounded-md" />
                                 </div>
                             )}
-                            {analysisResults.greenspace_percentage !== undefined && (
+                            {analysisResults.tree_cover_percent !== undefined && (
                                 <div className="mt-4">
-                                    <h3 className="text-xl font-semibold">Greenspace Percentage: {analysisResults.greenspace_percentage}%</h3>
+                                    <h3 className="text-xl font-semibold">Tree Coverage: {analysisResults.tree_cover_percent?.toFixed(2)}%</h3>
                                 </div>
                             )}
                             <div className="mt-4">
