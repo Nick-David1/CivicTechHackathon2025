@@ -7,9 +7,20 @@ from deepforest import main
 import os
 import requests
 import logging
+from pathlib import Path
+from dotenv import load_dotenv
 
 # Suppress DeepForest logging
 logging.getLogger('deepforest').setLevel(logging.ERROR)
+
+# Load .env file from the project root directory
+project_root = Path(__file__).resolve().parent.parent.parent  # Go up 3 levels to reach project root
+env_path = project_root / '.env'
+load_dotenv(env_path)
+
+# Debugging to stderr instead of stdout
+print(f"Loading .env from: {env_path}", file=sys.stderr)
+print(f"AIRVISUAL_API_KEY: {os.getenv('AIRVISUAL_API_KEY')}", file=sys.stderr)
 
 # Initialize model
 model = main.deepforest()
@@ -50,7 +61,7 @@ def analyze_image(image_base64, lat, lon):
         tree_cover = (tree_area / total_area) * 100
         
         print("Getting air quality...", file=sys.stderr)
-        api_key = '012f8393-a199-4264-be78-89fbb395da6d'
+        api_key = os.getenv('AIRVISUAL_API_KEY')
         air_quality = get_air_quality(lat, lon, api_key)
         
         result = {
@@ -79,7 +90,12 @@ if __name__ == '__main__':
         print(json.dumps({"error": "Missing parameters"}), file=sys.stderr)
         sys.exit(1)
     image_base64 = sys.argv[1]
-    lat = sys.argv[2]
-    lon = sys.argv[3]
+    try:
+        lat = float(sys.argv[2])
+        lon = float(sys.argv[3])
+    except ValueError:
+        print(json.dumps({"error": "Latitude and longitude must be numbers"}))
+        sys.exit(1)
+        
     result = analyze_image(image_base64, lat, lon)
     print(json.dumps(result))

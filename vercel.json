@@ -1,0 +1,8 @@
+{
+  "build": {
+    "env": {
+      "VITE_AUTH_URL": "@vite_auth_url",
+      "VITE_MAPBOX_TOKEN": "@vite_mapbox_token"
+    }
+  }
+} 
